@@ -203,7 +203,12 @@ export default function App() {
                   <Hero onStart={() => navigate('scan')} />
                   <Features />
                   <Workflow />
-                  <div className="relative overflow-hidden bg-green-600 py-4 border-y border-green-500/30">
+                  <div 
+                    className="relative overflow-hidden py-4 border-y border-green-500/30 bg-cover bg-center"
+                    style={{ 
+                      backgroundImage: `linear-gradient(rgba(22, 163, 74, 0.9), rgba(22, 163, 74, 0.9)), url('https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&q=80&w=2000')`
+                    }}
+                  >
                     <motion.div 
                       animate={{ x: [0, -1990] }}
                       transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
