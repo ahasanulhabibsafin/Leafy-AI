@@ -1,0 +1,253 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: /users/{userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string (optional)
+    //   - photoURL: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: /users/{userId}/scans/{scanId}
+    // Fields:
+    //   - userId: string (required)
+    //   - imageUrl: string (required)
+    //   - name: string (required)
+    //   - confidence: number (required)
+    //   - description: string (required)
+    //   - details: string (required)
+    //   - type: string (required, ['plant', 'animal', 'human', 'object', 'other'])
+    //   - isBangladeshMode: bool (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: /users/{userId}/chats/{chatId}
+    // Fields:
+    //   - userId: string (required)
+    //   - role: string (required, ['user', 'model'])
+    //   - content: string (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: /users/{userId}/metadata/stats
+    // Fields:
+    //   - totalScans: int (required)
+    //   - points: int (required)
+    //   - savedPlants: int (required)
+    //   - updatedAt: timestamp (required)
+    //
+    // Collection: /users/{userId}/saved_plants/{plantId}
+    // Fields:
+    //   - userId: string (required)
+    //   - name: string (required)
+    //   - imageUrl: string (required)
+    //   - type: string (required)
+    //   - details: string (required)
+    //   - healthScore: number (optional)
+    //   - location: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: /users/{userId}/growth_log_entries/{entryId}
+    // Fields:
+    //   - userId: string (required)
+    //   - plantId: string (required)
+    //   - imageUrl: string (required)
+    //   - healthScore: number (required)
+    //   - aiAnalysis: string (optional)
+    //   - notes: string (optional)
+    //   - improvement: number (optional)
+    //   - prediction: string (optional)
+    //   - voiceUrl: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: /users/{userId}/tasks/{taskId}
+    // Fields:
+    //   - userId: string (required)
+    //   - title: string (required)
+    //   - completed: bool (required)
+    //   - dueDate: timestamp (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: /users/{userId}/growth_milestones/{milestoneId}
+    // Fields:
+    //   - userId: string (required)
+    //   - plantId: string (required)
+    //   - day: int (required)
+    //   - imageUrl: string (required)
+    //   - note: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "safinbakshi013@gmail.com" && request.auth.token.email_verified == true));
+    }
+    
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+    
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.createdAt is timestamp &&
+             (!('role' in data) || data.role in ['admin', 'user']) &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() < 500));
+    }
+
+    function isValidScan(data) {
+      return data.keys().hasAll(['userId', 'name', 'confidence', 'description', 'details', 'type', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.confidence is number &&
+             data.description is string && data.description.size() < 2000 &&
+             data.details is string && data.details.size() < 5000 &&
+             data.type in ['plant', 'animal', 'human', 'object', 'other'] &&
+             data.createdAt is timestamp &&
+             (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() < 1000));
+    }
+
+    function isValidChat(data) {
+      return data.keys().hasAll(['userId', 'role', 'content', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.role in ['user', 'model'] &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 10000 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidStats(data) {
+      return data.keys().hasAll(['totalScans', 'points', 'savedPlants', 'updatedAt']) &&
+             data.totalScans is int && data.totalScans >= 0 &&
+             data.points is int && data.points >= 0 &&
+             data.savedPlants is int && data.savedPlants >= 0 &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidSavedPlant(data) {
+      return data.keys().hasAll(['userId', 'name', 'imageUrl', 'type', 'details', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.imageUrl is string && data.imageUrl.size() < 1000 &&
+             data.type is string &&
+             data.details is string && data.details.size() < 5000 &&
+             data.createdAt is timestamp &&
+             (!('healthScore' in data) || data.healthScore is number) &&
+             (!('location' in data) || (data.location is string && data.location.size() < 200));
+    }
+
+    function isValidGrowthLogEntry(data) {
+      return data.keys().hasAll(['userId', 'plantId', 'imageUrl', 'healthScore', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.plantId is string &&
+             data.imageUrl is string && data.imageUrl.size() < 1000 &&
+             data.healthScore is number &&
+             data.createdAt is timestamp &&
+             (!('aiAnalysis' in data) || (data.aiAnalysis is string && data.aiAnalysis.size() < 5000)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() < 2000)) &&
+             (!('improvement' in data) || data.improvement is number) &&
+             (!('prediction' in data) || (data.prediction is string && data.prediction.size() < 1000)) &&
+             (!('voiceUrl' in data) || (data.voiceUrl is string && data.voiceUrl.size() < 1000));
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['userId', 'title', 'completed', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.completed is bool &&
+             data.createdAt is timestamp &&
+             (!('dueDate' in data) || data.dueDate == null || data.dueDate is timestamp) &&
+             (!('reminderMinutes' in data) || data.reminderMinutes == null || data.reminderMinutes is int);
+    }
+
+    function isValidGrowthMilestone(data) {
+      return data.keys().hasAll(['userId', 'plantId', 'day', 'imageUrl', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.plantId is string &&
+             data.day is int && data.day >= 0 &&
+             data.imageUrl is string && data.imageUrl.size() < 1000 &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && ((!('role' in request.resource.data)) || request.resource.data.role == 'user' || isAdmin());
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                      request.resource.data.createdAt == resource.data.createdAt &&
+                      ((!('role' in request.resource.data)) || request.resource.data.role == resource.data.role || isAdmin());
+      
+      match /metadata/stats {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isOwner(userId) && isValidStats(request.resource.data);
+      }
+
+      match /scans/{scanId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidScan(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /saved_plants/{plantId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidSavedPlant(request.resource.data);
+        allow update: if isOwner(userId) && isValidSavedPlant(request.resource.data) &&
+                        request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /growth_log_entries/{entryId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidGrowthLogEntry(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+      
+      match /chats/{chatId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidChat(request.resource.data);
+        allow delete: if isAdmin();
+      }
+
+      match /tasks/{taskId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidTask(request.resource.data);
+        allow update: if isOwner(userId) && isValidTask(request.resource.data) &&
+                        request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /growth_milestones/{milestoneId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidGrowthMilestone(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+  }
+}

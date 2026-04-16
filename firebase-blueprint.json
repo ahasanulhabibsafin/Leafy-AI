@@ -1,0 +1,154 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Scan": {
+      "title": "Scan",
+      "description": "General scan result",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "name": { "type": "string" },
+        "confidence": { "type": "number" },
+        "description": { "type": "string" },
+        "details": { "type": "string" },
+        "type": { "type": "string", "enum": ["plant", "animal", "human", "object", "other"] },
+        "isBangladeshMode": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Chat message between user and AI",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "model"] },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "role", "content", "createdAt"]
+    },
+    "UserStats": {
+      "title": "UserStats",
+      "description": "User's gamification stats",
+      "type": "object",
+      "properties": {
+        "totalScans": { "type": "integer" },
+        "points": { "type": "integer" },
+        "savedPlants": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["totalScans", "points", "savedPlants"]
+    },
+    "SavedPlant": {
+      "title": "SavedPlant",
+      "description": "Plant saved by the user to their profile",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "type": { "type": "string" },
+        "details": { "type": "string" },
+        "healthScore": { "type": "number" },
+        "location": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "imageUrl", "createdAt"]
+    },
+    "GrowthLogEntry": {
+      "title": "GrowthLogEntry",
+      "description": "A detailed entry in a plant's growth log",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "plantId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "healthScore": { "type": "number" },
+        "aiAnalysis": { "type": "string" },
+        "notes": { "type": "string" },
+        "improvement": { "type": "number" },
+        "prediction": { "type": "string" },
+        "voiceUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "plantId", "imageUrl", "healthScore", "createdAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A plant care task",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "reminderMinutes": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "completed", "createdAt"]
+    },
+    "GrowthMilestone": {
+      "title": "GrowthMilestone",
+      "description": "A milestone in a plant's growth journey",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "plantId": { "type": "string" },
+        "day": { "type": "integer" },
+        "imageUrl": { "type": "string" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "plantId", "day", "imageUrl", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/users/{userId}/metadata/stats": {
+      "schema": "UserStats",
+      "description": "User's gamification stats"
+    },
+    "/users/{userId}/scans/{scanId}": {
+      "schema": "Scan",
+      "description": "User's plant scans"
+    },
+    "/users/{userId}/saved_plants/{plantId}": {
+      "schema": "SavedPlant",
+      "description": "User's saved plants"
+    },
+    "/users/{userId}/chats/{chatId}": {
+      "schema": "ChatMessage",
+      "description": "User's chat history"
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "User's plant care tasks"
+    },
+    "/users/{userId}/growth_milestones/{milestoneId}": {
+      "schema": "GrowthMilestone",
+      "description": "User's plant growth milestones"
+    },
+    "/users/{userId}/growth_log_entries/{entryId}": {
+      "schema": "GrowthLogEntry",
+      "description": "User's plant growth log entries"
+    }
+  }
+}

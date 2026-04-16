@@ -1,0 +1,8 @@
+{
+  "name": "Leafy AI",
+  "description": "Your personal plant doctor. Identify plants, diagnose diseases, and get expert care tips with a friendly AI assistant.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
