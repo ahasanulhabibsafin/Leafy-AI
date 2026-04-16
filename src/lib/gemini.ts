@@ -1,14 +1,17 @@
 import { GoogleGenAI, Type, ThinkingLevel, Modality } from "@google/genai";
 
+let aiInstance: GoogleGenAI | null = null;
 const getAI = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.error('GEMINI_API_KEY is missing from environment variables.');
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn('GEMINI_API_KEY is missing from environment variables. AI features will not work until set.');
+    }
+    // Pass a dummy key if undefined to prevent crashing on boot, though API calls will fail later.
+    aiInstance = new GoogleGenAI({ apiKey: apiKey || 'dummy-key-to-prevent-crash' });
   }
-  return new GoogleGenAI({ apiKey: apiKey || '' });
+  return aiInstance;
 };
-
-const ai = getAI();
 
 export interface ScanResult {
   name: string;
@@ -59,6 +62,7 @@ export const analyzeImage = async (
   userQuery?: string,
   quality: 'high' | 'standard' = 'high'
 ): Promise<ScanResult> => {
+  const ai = getAI();
   const modelName = quality === 'high' ? "gemini-3.1-pro-preview" : "gemini-3-flash-preview";
   
   const model = ai.models.generateContent({
@@ -214,6 +218,7 @@ export const visualizeGrowth = async (
   plantName: string,
   currentCondition: string
 ): Promise<string> => {
+  const ai = getAI();
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
     contents: {
@@ -253,6 +258,7 @@ export const getChatResponse = async (
   scanContext?: ScanResult,
   audioBase64?: string
 ) => {
+  const ai = getAI();
   let modelName = "gemini-3-flash-preview";
   
   let systemInstruction = `You are "Leafy AI", a friendly, smart, and helpful personal plant doctor. 
@@ -330,6 +336,7 @@ export const deepAnalyze = async (
   subjectName: string,
   language: 'en' | 'bn' = 'en'
 ): Promise<string> => {
+  const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3.1-pro-preview",
     contents: [
@@ -417,6 +424,7 @@ export const compareGrowth = async (
 
   parts.push({ text: prompt });
 
+  const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [{ parts }],
@@ -446,6 +454,7 @@ export const compareGrowth = async (
 };
 
 export const findNearbyNurseries = async (lat: number, lng: number, language: 'en' | 'bn' = 'en') => {
+  const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `Find nearby plant nurseries or garden centers around my location. 
@@ -476,6 +485,7 @@ export const findNearbyNurseries = async (lat: number, lng: number, language: 'e
 
 export const generateSpeech = async (text: string): Promise<string> => {
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text }] }],
